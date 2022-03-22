@@ -6,11 +6,19 @@ public class PlayerCamera : MonoBehaviour
 {
     Transform p_transform;
 
+    public static PlayerCamera playerCamera;
+
     public float sens;
     float xRotation;
 
     private void Awake()
     {
+        if (playerCamera == null)
+            playerCamera = this;
+
+        else
+            Destroy(gameObject);
+
         p_transform = transform.parent;
     }
 

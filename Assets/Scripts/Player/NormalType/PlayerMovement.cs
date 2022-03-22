@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    protected Rigidbody rb;
+    public Rigidbody rb;
     protected CapsuleCollider cc;
     protected RaycastHit hit;
 
