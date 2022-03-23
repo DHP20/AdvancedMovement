@@ -9,10 +9,10 @@ public class PlayerMovement : MonoBehaviour
     protected RaycastHit hit;
 
     [SerializeField]
-    protected float speed, groundMaxSpeed, airStrafeForce, airDrag = 0.3f, airMaxSpeed, counterDrag, jumpForce, sprintSpeed;//stamina,
-    protected float originalDrag, jumpTime;//currentStamina,
+    protected float speed, groundMaxSpeed, airStrafeForce, airDrag = 0.3f, crouchedSpeed, crouchedDrag = 0.6f, airMaxSpeed, counterDrag, jumpForce, sprintSpeed;//stamina,
+    protected float originalDrag, jumpTime, originalHeight;//currentStamina,
 
-    protected bool grounded, sprinting, sprintCD;
+    protected bool grounded, sprinting, sprintCD, crouched;
 
     Vector2 inputs;
     Vector3 moveDir;
@@ -36,9 +36,16 @@ public class PlayerMovement : MonoBehaviour
 
         InputManager.inputManager.p_actions.Move.performed += ctx => ReadMovementInput();
         InputManager.inputManager.p_actions.Move.canceled += ctx => ReadMovementInput();
+
         InputManager.inputManager.p_actions.Jump.started += ctx => Jump();
+
         InputManager.inputManager.p_actions.Sprint.started += ctx => sprinting = true;
         InputManager.inputManager.p_actions.Sprint.canceled += ctx => sprinting = false;
+
+        InputManager.inputManager.p_actions.Crouch.started += ctx => CrouchToggle(true);
+        InputManager.inputManager.p_actions.Crouch.canceled += ctx => CrouchToggle(false);
+
+        originalHeight = cc.height;
     }
 
     protected void FixedUpdate()
@@ -71,6 +78,15 @@ public class PlayerMovement : MonoBehaviour
 
     protected virtual void MovementGround()
     {
+        if (crouched)
+        {
+            CrouchedMovement();
+            return;
+        }
+
+        if (cc.height != originalHeight)
+            CrouchToggle(false);
+
         //Vector2 inputs = InputManager.inputManager.movementInput;
         //Vector3 moveDir = transform.forward * inputs.y + transform.right * inputs.x;
         //moveDir = transform.forward * inputs.y + transform.right * inputs.x;
@@ -155,6 +171,31 @@ public class PlayerMovement : MonoBehaviour
 
             return speed;
         }
+    }
+
+    protected void CrouchToggle(bool toggle)
+    {
+        crouched = toggle;
+        RaycastHit hitTemp;
+
+        if (toggle)
+        {
+            cc.height = originalHeight * 0.5f;
+            transform.position -= transform.up * cc.height / 2;
+            rb.drag = crouchedDrag;
+        }
+
+        else if(!Physics.SphereCast(transform.position, cc.radius, transform.up, out hitTemp, cc.height * 0.6f))
+        {
+            transform.position += transform.up * cc.height / 2;
+            cc.height = originalHeight;
+            rb.drag = originalDrag;
+        }
+    }
+
+    protected void CrouchedMovement()
+    {
+        
     }
 
     protected IEnumerator SprintCD()
