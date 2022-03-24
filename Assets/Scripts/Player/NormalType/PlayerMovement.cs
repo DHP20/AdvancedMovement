@@ -32,7 +32,7 @@ public class PlayerMovement : MonoBehaviour
         originalDrag = rb.drag;
         //currentStamina = stamina;
 
-        Application.targetFrameRate = 60;
+        Application.targetFrameRate = 90;
 
         InputManager.inputManager.p_actions.Move.performed += ctx => ReadMovementInput();
         InputManager.inputManager.p_actions.Move.canceled += ctx => ReadMovementInput();

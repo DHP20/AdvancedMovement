@@ -14,6 +14,8 @@ public class SwapSkill : MonoBehaviour
     [SerializeField]
     GameObject uiSwap;
 
+    Player player;
+
     Rigidbody playerRB;
 
     Image swapUI;
@@ -41,7 +43,8 @@ public class SwapSkill : MonoBehaviour
             uiSwap = Instantiate(uiSwap, transform);
             swapUI = uiSwap.GetComponentInChildren<Image>();
         }
-            
+
+        player = Player.player;
     }
 
     private void Update()
@@ -65,12 +68,14 @@ public class SwapSkill : MonoBehaviour
 
         if (on)
         {
-            Time.timeScale = 0.4f;
+            Time.timeScale = 0.6f;
+            player.playerCamera.sens /= 0.6f;
         }
 
         else
         {
             Time.timeScale = 1;
+            player.playerCamera.sens *= 0.6f;
         }
     }
 

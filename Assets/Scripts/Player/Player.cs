@@ -18,6 +18,6 @@ public class Player : MonoBehaviour
             player = this;
 
         playerMovement = GetComponent<PlayerMovement>();
-        playerCamera = GetComponent<PlayerCamera>();
+        playerCamera = GetComponentInChildren<PlayerCamera>();
     }
 }
