@@ -37,7 +37,11 @@ public class SwapSkill : MonoBehaviour
         playerRB = Player.player.playerMovement.rb;
 
         if (uiSwap)
-            swapUI = Instantiate(uiSwap, transform).GetComponentInChildren<Image>();
+        {
+            uiSwap = Instantiate(uiSwap, transform);
+            swapUI = uiSwap.GetComponentInChildren<Image>();
+        }
+            
     }
 
     private void Update()
@@ -45,11 +49,11 @@ public class SwapSkill : MonoBehaviour
         if (swapMode)
             SwapMode();
 
-        else if (currentReserve < maxReserve && !swapOnCD)
+        else if (currentReserve < maxReserve)
         {
             currentReserve += Time.deltaTime;
             UpdateUI();
-        }  
+        }
     }
 
     void SwapOnOff(bool on)
@@ -60,10 +64,14 @@ public class SwapSkill : MonoBehaviour
         swapMode = on;
 
         if (on)
+        {
             Time.timeScale = 0.4f;
+        }
 
         else
+        {
             Time.timeScale = 1;
+        }
     }
 
     void SwapMode()
@@ -111,6 +119,12 @@ public class SwapSkill : MonoBehaviour
     void UpdateUI()
     {
         swapUI.fillAmount = currentReserve / maxReserve;
+
+        if (swapUI.fillAmount == 1)
+            uiSwap.SetActive(false);
+
+        else
+            uiSwap.SetActive(true);
     }
 
     IEnumerator SwapCD()

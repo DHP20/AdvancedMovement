@@ -9,10 +9,10 @@ public class PlayerMovement : MonoBehaviour
     protected RaycastHit hit;
 
     [SerializeField]
-    protected float speed, groundMaxSpeed, airStrafeForce, airDrag = 0.3f, crouchedSpeed, crouchedDrag = 0.6f, airMaxSpeed, counterDrag, jumpForce, sprintSpeed;//stamina,
+    protected float speed, groundMaxSpeed, airStrafeForce, airDrag = 0.3f, crouchedSpeed, crouchedDrag = 0.6f, crouchedMaxSpeed = 1, slideBoost, airMaxSpeed, counterDrag, jumpForce, sprintSpeed, lerpMod;//stamina,
     protected float originalDrag, jumpTime, originalHeight;//currentStamina,
 
-    protected bool grounded, sprinting, sprintCD, crouched;
+    protected bool grounded, sprinting, sprintCD, crouched, wasOnAir, slideOnCD;
 
     Vector2 inputs;
     Vector3 moveDir;
@@ -52,7 +52,6 @@ public class PlayerMovement : MonoBehaviour
     {
         grounded = Physics.SphereCast(transform.position, cc.radius * 0.9f, Vector3.down, out hit, cc.height / 2.75f);
         moveDir = transform.forward * inputs.y + transform.right * inputs.x;
-        rb.useGravity = !grounded;
 
         if(grounded)
             MovementGround();
@@ -64,6 +63,8 @@ public class PlayerMovement : MonoBehaviour
         }
 
         //Debug.Log(rb.velocity.magnitude);
+
+        wasOnAir = !grounded;
     }
 
     //protected void LateUpdate()
@@ -78,18 +79,36 @@ public class PlayerMovement : MonoBehaviour
 
     protected virtual void MovementGround()
     {
+        float targetDrag, currentMaxSpeed;
+
         if (crouched)
         {
-            CrouchedMovement();
-            return;
+            targetDrag = crouchedDrag;
+            currentMaxSpeed = crouchedMaxSpeed;
+
+            if (rb.velocity.magnitude > currentMaxSpeed * 1.5f)
+            {
+                rb.drag = rb.drag = Mathf.Lerp(rb.drag, targetDrag, Time.deltaTime * lerpMod);
+                rb.useGravity = true;
+
+                return;
+            }
         }
 
-        if (cc.height != originalHeight)
-            CrouchToggle(false);
+        else if (wasOnAir)
+        {
+            float forwardSpeed = new Vector3(0, 0, rb.velocity.z).magnitude;
 
-        //Vector2 inputs = InputManager.inputManager.movementInput;
-        //Vector3 moveDir = transform.forward * inputs.y + transform.right * inputs.x;
-        //moveDir = transform.forward * inputs.y + transform.right * inputs.x;
+            if (forwardSpeed > groundMaxSpeed / 4f)
+            {
+                rb.drag = originalDrag;
+            }
+        }
+
+        rb.useGravity = false;
+
+        targetDrag = originalDrag;
+        currentMaxSpeed = groundMaxSpeed;
 
         moveDir = moveDir * HandleSprint() + transform.up * rb.velocity.y;
 
@@ -98,25 +117,20 @@ public class PlayerMovement : MonoBehaviour
 
         rb.AddForce(Vector3.ProjectOnPlane(moveDir, hit2.normal), ForceMode.Force);
 
-        if (rb.velocity.magnitude < groundMaxSpeed)
-            Vector3.ClampMagnitude(rb.velocity, groundMaxSpeed);
-
-        //if (prevMov.magnitude > rb.velocity.magnitude)
-        //    rb.drag = counterDrag;
+        if (rb.velocity.magnitude < currentMaxSpeed)
+            rb.velocity = Vector3.Lerp(rb.velocity, Vector3.ClampMagnitude(rb.velocity, currentMaxSpeed), Time.deltaTime);
 
         if (inputs == Vector2.zero)
-            rb.drag = counterDrag;
+            rb.drag = Mathf.Lerp(rb.drag, counterDrag, Time.deltaTime * lerpMod);
 
         else
-            rb.drag = originalDrag;
-
-        //Debug.Log(rb.drag);
-
-        //rb.velocity = Vector3.Lerp(rb.velocity, Vector3.ProjectOnPlane(moveDir, hit2.normal), Time.deltaTime * 15);
+            rb.drag = Mathf.Lerp(rb.drag, targetDrag, Time.deltaTime * lerpMod);
     }
 
     protected void MovementAir()
     {
+        rb.useGravity = true;
+
         Vector3 projVel = Vector3.Project(rb.velocity, moveDir);
 
         bool goingAway = Vector3.Dot(moveDir, projVel.normalized) <= 0f;
@@ -132,8 +146,6 @@ public class PlayerMovement : MonoBehaviour
                 targetForce = Vector3.ClampMagnitude(targetForce, airMaxSpeed + projVel.magnitude);
 
             rb.AddForce(targetForce, ForceMode.VelocityChange);
-
-            Debug.Log(targetForce + "  " + goingAway + "  " + projVel);
         }
     }
 
@@ -152,50 +164,51 @@ public class PlayerMovement : MonoBehaviour
         if (InputManager.inputManager.movementInput.y <= 0)
             return speed;
 
-        //if (sprintCD)
-        //    return speed;
-
-        //if (currentStamina <= 0)
-        //    StartCoroutine(SprintCD());
-
-        if (sprinting)// && currentStamina > 0
+        if (sprinting)
         {
-            //currentStamina -= Time.fixedDeltaTime * 10;
             return sprintSpeed;
         }
 
         else
         {
-            //if (currentStamina < stamina)
-            //    currentStamina += Time.fixedDeltaTime * 12;
-
             return speed;
         }
     }
 
     protected void CrouchToggle(bool toggle)
     {
-        crouched = toggle;
         RaycastHit hitTemp;
 
-        if (toggle)
+        if (toggle && !crouched)
         {
             cc.height = originalHeight * 0.5f;
             transform.position -= transform.up * cc.height / 2;
             rb.drag = crouchedDrag;
+            crouched = true;
+
+            float zSpeed = new Vector3(0, 0, rb.velocity.z).magnitude;
+
+            if (zSpeed > groundMaxSpeed / 1.5f)
+                Slide();
         }
 
-        else if(!Physics.SphereCast(transform.position, cc.radius, transform.up, out hitTemp, cc.height * 0.6f))
+        else if(!Physics.SphereCast(transform.position, cc.radius, transform.up, out hitTemp, cc.height * 0.6f) && crouched)
         {
             transform.position += transform.up * cc.height / 2;
             cc.height = originalHeight;
             rb.drag = originalDrag;
+            crouched = false;
         }
     }
 
-    protected void CrouchedMovement()
+    protected void Slide()
     {
-        
+        if (slideOnCD || !grounded)
+            return;
+
+        rb.AddForce(rb.velocity.normalized * slideBoost, ForceMode.Impulse);
+
+        StartCoroutine(SlideCD());
     }
 
     protected IEnumerator SprintCD()
@@ -205,5 +218,16 @@ public class PlayerMovement : MonoBehaviour
         yield return new WaitForSeconds(1);
 
         sprintCD = false;
+    }
+
+    protected IEnumerator SlideCD()
+    {
+        Debug.Log("slide");
+
+        slideOnCD = true;
+
+        yield return new WaitForSeconds(2);
+
+        slideOnCD = false;
     }
 }
