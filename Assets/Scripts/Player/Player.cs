@@ -20,4 +20,14 @@ public class Player : MonoBehaviour
         playerMovement = GetComponent<PlayerMovement>();
         playerCamera = GetComponentInChildren<PlayerCamera>();
     }
+
+    private void Start()
+    {
+        InputManager.inputManager.p_actions.Quit.started += ctx => ExitGame();
+    }
+
+    void ExitGame()
+    {
+        Application.Quit();
+    }
 }

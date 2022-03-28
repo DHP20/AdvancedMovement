@@ -97,6 +97,14 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
                     ""expectedControlType"": ""Button"",
                     ""processors"": """",
                     ""interactions"": ""Press""
+                },
+                {
+                    ""name"": ""Quit"",
+                    ""type"": ""Button"",
+                    ""id"": ""4f8d21a6-864d-47f1-98eb-b2cf54f06905"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": ""Press""
                 }
             ],
             ""bindings"": [
@@ -438,6 +446,17 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
                     ""processors"": """",
                     ""groups"": ""Gamepad"",
                     ""action"": ""Jump"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""9e281c9a-8c04-4b00-aa92-6992e930271c"",
+                    ""path"": ""<Keyboard>/escape"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""Quit"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -1025,6 +1044,7 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
         m_Player_Fire = m_Player.FindAction("Fire", throwIfNotFound: true);
         m_Player_DownSights = m_Player.FindAction("DownSights", throwIfNotFound: true);
         m_Player_Reload = m_Player.FindAction("Reload", throwIfNotFound: true);
+        m_Player_Quit = m_Player.FindAction("Quit", throwIfNotFound: true);
         // UI
         m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
         m_UI_Navigate = m_UI.FindAction("Navigate", throwIfNotFound: true);
@@ -1096,6 +1116,7 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
     private readonly InputAction m_Player_Fire;
     private readonly InputAction m_Player_DownSights;
     private readonly InputAction m_Player_Reload;
+    private readonly InputAction m_Player_Quit;
     public struct PlayerActions
     {
         private @PlayerInputs m_Wrapper;
@@ -1110,6 +1131,7 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
         public InputAction @Fire => m_Wrapper.m_Player_Fire;
         public InputAction @DownSights => m_Wrapper.m_Player_DownSights;
         public InputAction @Reload => m_Wrapper.m_Player_Reload;
+        public InputAction @Quit => m_Wrapper.m_Player_Quit;
         public InputActionMap Get() { return m_Wrapper.m_Player; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -1149,6 +1171,9 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
                 @Reload.started -= m_Wrapper.m_PlayerActionsCallbackInterface.OnReload;
                 @Reload.performed -= m_Wrapper.m_PlayerActionsCallbackInterface.OnReload;
                 @Reload.canceled -= m_Wrapper.m_PlayerActionsCallbackInterface.OnReload;
+                @Quit.started -= m_Wrapper.m_PlayerActionsCallbackInterface.OnQuit;
+                @Quit.performed -= m_Wrapper.m_PlayerActionsCallbackInterface.OnQuit;
+                @Quit.canceled -= m_Wrapper.m_PlayerActionsCallbackInterface.OnQuit;
             }
             m_Wrapper.m_PlayerActionsCallbackInterface = instance;
             if (instance != null)
@@ -1183,6 +1208,9 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
                 @Reload.started += instance.OnReload;
                 @Reload.performed += instance.OnReload;
                 @Reload.canceled += instance.OnReload;
+                @Quit.started += instance.OnQuit;
+                @Quit.performed += instance.OnQuit;
+                @Quit.canceled += instance.OnQuit;
             }
         }
     }
@@ -1349,6 +1377,7 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
         void OnFire(InputAction.CallbackContext context);
         void OnDownSights(InputAction.CallbackContext context);
         void OnReload(InputAction.CallbackContext context);
+        void OnQuit(InputAction.CallbackContext context);
     }
     public interface IUIActions
     {
