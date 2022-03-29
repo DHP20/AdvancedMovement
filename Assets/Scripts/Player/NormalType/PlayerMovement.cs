@@ -127,6 +127,11 @@ public class PlayerMovement : MonoBehaviour
             rb.drag = Mathf.Lerp(rb.drag, targetDrag, Time.deltaTime * lerpMod);
     }
 
+    protected virtual void CameraSway()
+    {
+
+    }
+
     protected void MovementAir()
     {
         rb.useGravity = true;
@@ -156,7 +161,8 @@ public class PlayerMovement : MonoBehaviour
 
         rb.drag = 0;
 
-        rb.AddForce(jumpForce * rb.mass * Vector3.up, ForceMode.Impulse);
+        rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
+        rb.AddForce(jumpForce * rb.mass * hit.normal, ForceMode.Impulse);
     }
 
     protected float HandleSprint()
