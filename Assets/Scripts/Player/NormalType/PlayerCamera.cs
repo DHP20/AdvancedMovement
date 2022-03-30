@@ -7,9 +7,10 @@ public class PlayerCamera : MonoBehaviour
     Transform p_transform;
 
     public static PlayerCamera playerCamera;
+    PlayerMovement playerMov;
 
     public float sens;
-    float xRotation;
+    float xRotation, yRotation;
 
     private void Awake()
     {
@@ -26,6 +27,8 @@ public class PlayerCamera : MonoBehaviour
     {
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
+
+        playerMov = Player.player.playerMovement;
     }
 
     private void Update()
@@ -43,8 +46,18 @@ public class PlayerCamera : MonoBehaviour
         xRotation -= mouseY;
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
 
-        p_transform.Rotate(Vector3.up * mouseX);
+        yRotation += mouseX;
 
-        transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        if (!playerMov.wallRiding)
+        {
+            p_transform.Rotate(Vector3.up * mouseX);
+
+            transform.localRotation = Quaternion.Euler(xRotation, 0, playerMov.currentSway);
+        }
+
+        else
+        {
+            transform.localRotation = Quaternion.Euler(xRotation, yRotation, playerMov.currentSway);
+        }
     }
 }
