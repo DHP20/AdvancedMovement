@@ -68,14 +68,14 @@ public class SwapSkill : MonoBehaviour
 
         if (on)
         {
-            Time.timeScale = 0.6f;
-            player.playerCamera.sens /= 0.6f;
+            Time.timeScale = 0.5f;
+            player.playerCamera.sens /= 0.5f;
         }
 
         else
         {
             Time.timeScale = 1;
-            player.playerCamera.sens *= 0.6f;
+            player.playerCamera.sens *= 0.5f;
         }
     }
 
