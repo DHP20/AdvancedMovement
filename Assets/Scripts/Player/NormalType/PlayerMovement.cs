@@ -6,29 +6,37 @@ public class PlayerMovement : MonoBehaviour
 {
     public Rigidbody rb;
     protected CapsuleCollider cc;
-    protected RaycastHit hit;
+    protected RaycastHit hit, wallRunHit;
 
     [SerializeField]
-    protected float speed, groundMaxSpeed, airStrafeForce, airDrag = 0.3f, crouchedSpeed, crouchedDrag = 0.6f, crouchedMaxSpeed = 1, slideBoost, airMaxSpeed, counterDrag, jumpForce, sprintSpeed, lerpMod;//stamina,
-    protected float originalDrag, jumpTime, originalHeight;//currentStamina,
+    protected float speed, groundMaxSpeed, airStrafeForce, airDrag = 0.3f, crouchedSpeed, crouchedDrag = 0.6f, crouchedMaxSpeed = 1;
+    [SerializeField]
+    protected float slideBoost, airMaxSpeed, counterDrag, jumpForce, sprintSpeed, lerpMod, maxExtraFOV = 30, maxSway = 15, swayMod = 3;//stamina,
+    protected float originalDrag, jumpTime, originalHeight, normalFOV;//currentStamina,
+    public float currentSway = 0;
 
-    protected bool grounded, sprinting, sprintCD, crouched, wasOnAir, slideOnCD;
+    protected bool grounded, sprinting, sprintCD, crouched, wasOnAir, slideOnCD, swayDir, resetSway, doubleJump, wasOnWall, exitWallRide;
+    public bool wallRiding;
 
     Vector2 inputs;
     Vector3 moveDir;
+    Vector3 wallRideNormal;
     protected Vector3 prevMov;
 
     protected Player player;
+
+    protected Camera cm;
+    protected Transform cmTransform;
 
     protected void Awake()
     {
         rb = GetComponent<Rigidbody>();
         cc = GetComponent<CapsuleCollider>();
-        player = Player.player;
     }
 
     protected void Start()
     {
+        player = Player.player;
         originalDrag = rb.drag;
         //currentStamina = stamina;
 
@@ -46,12 +54,39 @@ public class PlayerMovement : MonoBehaviour
         InputManager.inputManager.p_actions.Crouch.canceled += ctx => CrouchToggle(false);
 
         originalHeight = cc.height;
+
+        cm = player.playerCamera.GetComponent<Camera>();
+        cmTransform = cm.transform;
+
+        normalFOV = cm.fieldOfView;
     }
 
     protected void FixedUpdate()
     {
-        grounded = Physics.SphereCast(transform.position, cc.radius * 0.9f, Vector3.down, out hit, cc.height / 2.75f);
         moveDir = transform.forward * inputs.y + transform.right * inputs.x;
+
+        if (wallRiding)
+        {
+            WallRiding();
+            return;
+        }
+
+        if (!crouched)
+        {
+            grounded = Physics.SphereCast(transform.position, cc.radius * 0.7f, Vector3.down, out hit, cc.height / 2.4f);
+
+            if (!grounded)
+                wallRiding = Physics.SphereCast(transform.position, cc.radius * 0.7f, moveDir, out wallRunHit, cc.radius);
+
+            if(wasOnWall != wallRiding)
+            {
+                EnteredWallRide();
+                return;
+            }
+        }
+
+        else
+            grounded = Physics.SphereCast(transform.position, cc.radius * 0.7f, Vector3.down, out hit, cc.height / 3f);
 
         if(grounded)
             MovementGround();
@@ -59,12 +94,17 @@ public class PlayerMovement : MonoBehaviour
         else
         {
             rb.drag = airDrag;
+            resetSway = true;
             MovementAir();
         }
+
+        HandleFOV();
+        //CameraSway();
 
         //Debug.Log(rb.velocity.magnitude);
 
         wasOnAir = !grounded;
+        wasOnWall = wallRiding;
     }
 
     //protected void LateUpdate()
@@ -86,6 +126,11 @@ public class PlayerMovement : MonoBehaviour
             targetDrag = crouchedDrag;
             currentMaxSpeed = crouchedMaxSpeed;
 
+            resetSway = true;
+
+            if (wasOnAir)
+                Slide();
+
             if (rb.velocity.magnitude > currentMaxSpeed * 1.5f)
             {
                 rb.drag = rb.drag = Mathf.Lerp(rb.drag, targetDrag, Time.deltaTime * lerpMod);
@@ -104,6 +149,9 @@ public class PlayerMovement : MonoBehaviour
                 rb.drag = originalDrag;
             }
         }
+
+        if (wasOnAir)
+            doubleJump = true;
 
         rb.useGravity = false;
 
@@ -127,9 +175,56 @@ public class PlayerMovement : MonoBehaviour
             rb.drag = Mathf.Lerp(rb.drag, targetDrag, Time.deltaTime * lerpMod);
     }
 
+    protected void HandleFOV()
+    {
+        Vector3 locVel = transform.InverseTransformDirection(rb.velocity);
+
+        if (locVel.z < 0)
+            locVel.z = 0;
+
+        float forwardMag = new Vector3(0, 0, locVel.z).magnitude;
+
+        float mod = (forwardMag / maxExtraFOV);
+
+        if (mod > 1)
+            mod = 1;
+
+        cm.fieldOfView = normalFOV + maxExtraFOV * mod;
+    }
+
     protected virtual void CameraSway()
     {
+        if (inputs.Equals(Vector2.zero) || !grounded)
+            resetSway = true;
 
+        else if (!crouched)
+            resetSway = false;
+
+        if (resetSway)
+        {
+            currentSway = Mathf.Lerp(currentSway, 0, Time.fixedDeltaTime * swayMod);
+            return;
+        }
+
+        if (!swayDir)
+        {
+            if (currentSway < maxSway)
+                currentSway += Time.fixedDeltaTime * swayMod;
+
+            else
+                swayDir = true;
+        }
+
+        else
+        {
+            if (currentSway > -maxSway)
+                currentSway -= Time.fixedDeltaTime * swayMod;
+
+            else
+                swayDir = false;
+        }
+
+        Debug.Log(currentSway + " " + swayDir + " " + resetSway);
     }
 
     protected void MovementAir()
@@ -156,8 +251,20 @@ public class PlayerMovement : MonoBehaviour
 
     protected void Jump()
     {
-        if (!grounded)
+        if (!grounded && doubleJump)
+        {
+            rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
+
+            if (!moveDir.Equals(Vector3.zero))
+                rb.velocity = moveDir * jumpForce / 1.5f;
+
+            rb.AddForce(jumpForce * Vector3.up, ForceMode.Impulse);
+            doubleJump = false;
+        }
+
+        else if (!grounded)
             return;
+        
 
         rb.drag = 0;
 
@@ -215,6 +322,33 @@ public class PlayerMovement : MonoBehaviour
         rb.AddForce(rb.velocity.normalized * slideBoost, ForceMode.Impulse);
 
         StartCoroutine(SlideCD());
+    }
+
+    void EnteredWallRide()
+    {
+        Debug.Log("Enter WallRiding");
+
+        rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
+        rb.useGravity = false;
+    }
+
+    void WallRiding()
+    {
+        wallRideNormal = wallRunHit.normal;
+        wallRiding = Physics.SphereCast(transform.position, cc.radius * 0.7f, -wallRideNormal, out wallRunHit, cc.radius);
+
+        Vector3 parallelDir = Vector3.Cross(wallRideNormal, transform.up);
+
+        Debug.DrawRay(wallRunHit.point, parallelDir, Color.green, Time.fixedDeltaTime);
+        //rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
+        //Debug.LogError("WallRiding");
+
+
+    }
+
+    void ExitWallRide()
+    {
+
     }
 
     protected IEnumerator SprintCD()
