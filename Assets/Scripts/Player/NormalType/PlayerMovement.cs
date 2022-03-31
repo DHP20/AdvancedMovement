@@ -9,18 +9,19 @@ public class PlayerMovement : MonoBehaviour
     protected RaycastHit hit, wallRunHit;
 
     [SerializeField]
-    protected float speed, groundMaxSpeed, airStrafeForce, airDrag = 0.3f, crouchedSpeed, crouchedDrag = 0.6f, crouchedMaxSpeed = 1;
+    protected float speed, groundMaxSpeed, airStrafeForce, airDrag = 0.3f, crouchedSpeed, crouchedDrag = 0.6f, crouchedMaxSpeed = 1, wallDrag = 0.8f, wallForce;
     [SerializeField]
     protected float slideBoost, airMaxSpeed, counterDrag, jumpForce, sprintSpeed, lerpMod, maxExtraFOV = 30, maxSway = 15, swayMod = 3;//stamina,
     protected float originalDrag, jumpTime, originalHeight, normalFOV;//currentStamina,
     public float currentSway = 0;
 
-    protected bool grounded, sprinting, sprintCD, crouched, wasOnAir, slideOnCD, swayDir, resetSway, doubleJump, wasOnWall, exitWallRide;
+    protected bool grounded, sprinting, sprintCD, crouched, wasOnAir, slideOnCD, swayDir, resetSway, doubleJump, wasOnWall;
     public bool wallRiding;
 
     Vector2 inputs;
     Vector3 moveDir;
     Vector3 wallRideNormal;
+    Vector3 wallVector;
     protected Vector3 prevMov;
 
     protected Player player;
@@ -76,7 +77,7 @@ public class PlayerMovement : MonoBehaviour
             grounded = Physics.SphereCast(transform.position, cc.radius * 0.7f, Vector3.down, out hit, cc.height / 2.4f);
 
             if (!grounded)
-                wallRiding = Physics.SphereCast(transform.position, cc.radius * 0.7f, moveDir, out wallRunHit, cc.radius);
+                wallRiding = Physics.SphereCast(transform.position, cc.radius * 0.7f, transform.right, out wallRunHit, cc.radius) || Physics.SphereCast(transform.position, cc.radius * 0.7f, -transform.right, out wallRunHit, cc.radius);
 
             if(wasOnWall != wallRiding)
             {
@@ -251,6 +252,12 @@ public class PlayerMovement : MonoBehaviour
 
     protected void Jump()
     {
+        if (wallRiding)
+        {
+            rb.AddForce(jumpForce * wallRunHit.normal, ForceMode.Impulse);
+            return;
+        }
+
         if (!grounded && doubleJump)
         {
             rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
@@ -326,10 +333,19 @@ public class PlayerMovement : MonoBehaviour
 
     void EnteredWallRide()
     {
-        Debug.Log("Enter WallRiding");
-
         rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
+        rb.drag = wallDrag;
         rb.useGravity = false;
+        wallRideNormal = wallRunHit.normal;
+
+        if (Physics.SphereCast(transform.position, cc.radius * 0.7f, -transform.right, out wallRunHit, cc.radius))
+            wallVector = Vector3.Cross(wallRideNormal, transform.up);
+
+        else
+            wallVector = Vector3.Cross(wallRideNormal, -transform.up);
+
+        player.transform.rotation = Quaternion.Euler(wallVector);
+        player.playerCamera.yRotation = Quaternion.ToEulerAngles(cm.transform.rotation).y;
     }
 
     void WallRiding()
@@ -337,13 +353,14 @@ public class PlayerMovement : MonoBehaviour
         wallRideNormal = wallRunHit.normal;
         wallRiding = Physics.SphereCast(transform.position, cc.radius * 0.7f, -wallRideNormal, out wallRunHit, cc.radius);
 
-        Vector3 parallelDir = Vector3.Cross(wallRideNormal, transform.up);
-
-        Debug.DrawRay(wallRunHit.point, parallelDir, Color.green, Time.fixedDeltaTime);
+        Debug.DrawRay(wallRunHit.point, wallVector, Color.green, Time.fixedDeltaTime);
         //rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
         //Debug.LogError("WallRiding");
 
+        rb.AddForce(wallVector * wallForce * inputs.y);
 
+        if (wasOnWall != wallRiding)
+            ExitWallRide();
     }
 
     void ExitWallRide()

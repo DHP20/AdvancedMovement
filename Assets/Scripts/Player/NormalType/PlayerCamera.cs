@@ -10,7 +10,8 @@ public class PlayerCamera : MonoBehaviour
     PlayerMovement playerMov;
 
     public float sens;
-    float xRotation, yRotation;
+    float xRotation;
+    public float yRotation;
 
     private void Awake()
     {
