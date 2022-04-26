@@ -49,16 +49,25 @@ public class PlayerCamera : MonoBehaviour
 
         yRotation += mouseX;
 
-        if (!playerMov.wallRiding)
-        {
-            p_transform.Rotate(Vector3.up * mouseX);
+        #region CameraBugged
 
-            transform.localRotation = Quaternion.Euler(xRotation, 0, playerMov.currentSway);
-        }
+        //if (!playerMov.wallRiding)
+        //{
+        //    p_transform.Rotate(Vector3.up * mouseX);
 
-        else
-        {
-            transform.localRotation = Quaternion.Euler(xRotation, yRotation, playerMov.currentSway);
-        }
+        //    transform.localRotation = Quaternion.Euler(xRotation, 0, playerMov.currentSway);
+        //}
+
+        //else
+        //{
+        //    transform.localRotation = Quaternion.Euler(xRotation, yRotation, playerMov.currentSway);
+        //}
+
+        #endregion
+
+        p_transform.Rotate(Vector3.up * mouseX);
+
+        transform.localRotation = Quaternion.Euler(xRotation, 0, playerMov.currentSway);
+
     }
 }
