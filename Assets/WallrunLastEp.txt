@@ -1,1 +1,1 @@
-Ultimo ep: replantear wallrun como estado, entra y mira en una direccion, la camara se mueve pero no el cuerpo a menos que mire en direccion contraria, en ese caso se da un 180 en 1 frame.
+Ultimo ep: Solo falta retocar el calculo de la direccion en funcion del Cross product de la normal.
