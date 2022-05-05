@@ -31,6 +31,8 @@ public class PlayerMovement : MonoBehaviour
 
     protected GameObject lastWall;
 
+    IEnumerator wrCD;
+
     protected void Awake()
     {
         rb = GetComponent<Rigidbody>();
@@ -41,7 +43,6 @@ public class PlayerMovement : MonoBehaviour
     {
         player = Player.player;
         originalDrag = rb.drag;
-        //currentStamina = stamina;
 
         Application.targetFrameRate = 90;
 
@@ -74,28 +75,7 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
-        if (!crouched)
-        {
-            grounded = Physics.SphereCast(transform.position, cc.radius * 0.7f, Vector3.down, out hit, cc.height / 2.4f);
-
-            if (!grounded)
-                if (Physics.SphereCast(transform.position, cc.radius * 0.7f, transform.right, out wallRunHit, cc.radius) || Physics.SphereCast(transform.position, cc.radius * 0.7f, -transform.right, out wallRunHit, cc.radius))
-                {
-                    EnteredWallRide();
-                    return;
-                }
-                    
-                //wallRiding = Physics.SphereCast(transform.position, cc.radius * 0.7f, transform.right, out wallRunHit, cc.radius) || Physics.SphereCast(transform.position, cc.radius * 0.7f, -transform.right, out wallRunHit, cc.radius);
-
-            //if(wasOnWall != wallRiding)
-            //{
-            //    EnteredWallRide();
-            //    return;
-            //}
-        }
-
-        else
-            grounded = Physics.SphereCast(transform.position, cc.radius * 0.7f, Vector3.down, out hit, cc.height / 3f);
+        
 
         if(grounded)
             MovementGround();
@@ -110,16 +90,23 @@ public class PlayerMovement : MonoBehaviour
         HandleFOV();
         //CameraSway();
 
-        //Debug.Log(rb.velocity.magnitude);
-
         wasOnAir = !grounded;
-        //wasOnWall = wallRiding;
-    }
 
-    //protected void LateUpdate()
-    //{
-    //    prevMov = rb.velocity;
-    //}
+        if (!crouched)
+        {
+            grounded = Physics.SphereCast(transform.position, cc.radius * 0.7f, Vector3.down, out hit, cc.height / 2.4f);
+
+            if (!grounded)
+                if (Physics.SphereCast(transform.position, cc.radius * 0.7f, transform.right, out wallRunHit, cc.radius) || Physics.SphereCast(transform.position, cc.radius * 0.7f, -transform.right, out wallRunHit, cc.radius))
+                {
+                    EnteredWallRide();
+                    return;
+                }
+        }
+
+        else
+            grounded = Physics.SphereCast(transform.position, cc.radius * 0.7f, Vector3.down, out hit, cc.height / 3f);
+    }
 
     protected void ReadMovementInput()
     {
@@ -198,7 +185,7 @@ public class PlayerMovement : MonoBehaviour
         if (mod > 1)
             mod = 1;
 
-        cm.fieldOfView = normalFOV + maxExtraFOV * mod;
+        cm.fieldOfView = Mathf.Lerp(cm.fieldOfView, normalFOV + maxExtraFOV * mod, Time.deltaTime * 3);
     }
 
     protected virtual void CameraSway()
@@ -263,15 +250,13 @@ public class PlayerMovement : MonoBehaviour
         if (wallRunning)
         {
             rb.AddForce(jumpForce * wallRunHit.normal + Vector3.up * jumpForce * 0.75f, ForceMode.Impulse);
+            ExitWallRide();
             return;
         }
 
         if (!grounded && doubleJump)
         {
             rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
-
-            //if (!moveDir.Equals(Vector3.zero))
-            //    rb.velocity = moveDir * jumpForce / 1.5f;
 
             rb.AddForce(jumpForce * Vector3.up, ForceMode.Impulse);
             doubleJump = false;
@@ -333,8 +318,6 @@ public class PlayerMovement : MonoBehaviour
             rb.drag = originalDrag;
             crouched = false;
         }
-
-        Debug.Log(crouched);
     }
 
     protected void Slide()
@@ -349,76 +332,42 @@ public class PlayerMovement : MonoBehaviour
 
     void EnteredWallRide()
     {
-        if (lastWall == wallRunHit.transform.gameObject && wallRunOnCD)
+        if ((lastWall == wallRunHit.transform.gameObject && wallRunOnCD) )//|| wallRunHit.transform.gameObject.layer != 8)
             return;
 
-        Debug.Log(lastWall);
+        Debug.Log(lastWall + "  " + wallRunOnCD);
 
         lastWall = wallRunHit.transform.gameObject;
 
         Debug.Log(lastWall);
-
-        Debug.Log("enter");
 
         doubleJump = true;
         wallRunning = true;
         rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
         rb.drag = wallDrag;
         rb.useGravity = false;
-        wallRideNormal = wallRunHit.normal;
-
-        #region oldwr
-        //Debug.Log("enter");
-        //wasOnWall = wallRiding;
-
-        //rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
-        //rb.drag = wallDrag;
-        //rb.useGravity = false;
-        //wallRideNormal = wallRunHit.normal;
-        #endregion
-
-        #region CameraBugged
-
-        //wallrunYRotExit = player.playerCamera.yRotation;
-        //Vector3 cmFix = transform.TransformVector(player.playerCamera.transform.rotation.eulerAngles);
-        //rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
-        //rb.drag = wallDrag;
-        //rb.useGravity = false;
-        //wallRideNormal = wallRunHit.normal;
-
-        //if (Physics.SphereCast(transform.position, cc.radius * 0.7f, -transform.right, out wallRunHit, cc.radius))
-        //    wallVector = Vector3.Cross(wallRideNormal, transform.up);
-
-        //else
-        //    wallVector = Vector3.Cross(wallRideNormal, -transform.up);
-
-        //player.transform.rotation = Quaternion.Euler(wallVector);
-        //player.playerCamera.transform.rotation = Quaternion.Euler(transform.InverseTransformVector(cmFix));
-
-        #endregion
-        //player.playerCamera.yRotation = Quaternion.ToEulerAngles(cm.transform.rotation).y;
     }
 
     void WallRiding()
     {
-        Debug.Log(Vector3.Project(transform.forward, Vector3.Cross(wallRideNormal, transform.up)).z);
+        wallRideNormal = wallRunHit.normal;
 
-        if (Vector3.Project(transform.forward, Vector3.Cross(wallRideNormal, transform.up)).z >= 0)
+        if (Vector3.Angle(Vector3.Project(transform.forward, Vector3.Cross(wallRideNormal, transform.up)), Vector3.Cross(wallRideNormal, transform.up)) < 90)
             wallVector = Vector3.Cross(wallRideNormal, transform.up);
 
         else
             wallVector = -Vector3.Cross(wallRideNormal, transform.up);
 
-        Debug.Log(wallVector);
-
-        if (!Physics.SphereCast(transform.position, cc.radius * 0.7f, -wallRideNormal, out wallRunHit, cc.radius))
-            ExitWallRide();
-
         Debug.DrawRay(wallRunHit.point, wallVector, Color.green, Time.fixedDeltaTime);
         Debug.DrawRay(wallRunHit.point, Vector3.Cross(wallRideNormal, transform.up), Color.white, Time.fixedDeltaTime);
         Debug.DrawRay(transform.position, -wallRideNormal, Color.red, Time.fixedDeltaTime);
 
-        rb.AddForce(wallVector * wallForce * inputs.y);
+        rb.AddForce(wallVector * wallForce * inputs.y + -wallRideNormal * 120);
+
+        Debug.Log(!Physics.SphereCast(transform.position, cc.radius * 0.8f, -wallRideNormal, out wallRunHit, cc.radius));
+
+        if (!Physics.SphereCast(transform.position, cc.radius, -wallRideNormal, out wallRunHit, cc.radius * 1.25f) && !Physics.Raycast(transform.position, -wallRideNormal, out wallRunHit, cc.radius * 1.25f))
+            ExitWallRide();
     }
 
     void ExitWallRide()
@@ -429,11 +378,10 @@ public class PlayerMovement : MonoBehaviour
         rb.drag = airDrag;
         rb.useGravity = true;
 
-        StartCoroutine(WallRunCD());
+        if (wrCD != null)
+            StopCoroutine(wrCD);
 
-        #region CameraBugged
-        //player.playerCamera.yRotation = wallrunYRotExit;
-        #endregion
+        StartCoroutine(wrCD = WallRunCD());
     }
 
     protected IEnumerator SprintCD()
