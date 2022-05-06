@@ -12,6 +12,15 @@ public class Player : MonoBehaviour
     [HideInInspector]
     public PlayerCamera playerCamera;
 
+    Vector3 currentSpawn;
+
+    [SerializeField]
+    GameObject controlsGO, pauseMenu;
+
+    BaseEnemy[] enemies;
+
+    bool onMenu;
+
     private void Awake()
     {
         if (!player)
@@ -23,10 +32,60 @@ public class Player : MonoBehaviour
 
     private void Start()
     {
-        InputManager.inputManager.p_actions.Quit.started += ctx => ExitGame();
+        enemies = FindObjectsOfType<BaseEnemy>();
+        InputManager.inputManager.p_actions.Quit.started += ctx => Pause();
+
+        InputManager.inputManager.p_actions.Controls.started += ctx => ControlsToggle(true);
+        InputManager.inputManager.p_actions.Controls.canceled += ctx => ControlsToggle(false);
+
+
+        ChangeSpawn(transform.position);
     }
 
-    void ExitGame()
+    public void ChangeSpawn(Vector3 spawn)
+    {
+        currentSpawn = spawn;
+    }
+
+    public void Death()
+    {
+        transform.position = currentSpawn;
+        playerMovement.ResetState();
+
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            enemies[i].Respawn();
+        }
+    }
+
+    void ControlsToggle(bool toggle)
+    {
+        controlsGO.SetActive(toggle);
+    }
+
+    public void Pause()
+    {
+        pauseMenu.SetActive(!onMenu);
+
+        if (!onMenu)
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Time.timeScale = 0;
+            onMenu = true;
+        }
+
+
+        else
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Time.timeScale = 1;
+            onMenu = false;
+        }
+
+        Cursor.visible = onMenu;
+    }
+
+    public void ExitGame()
     {
         Application.Quit();
     }

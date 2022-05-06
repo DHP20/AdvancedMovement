@@ -70,12 +70,14 @@ public class SwapSkill : MonoBehaviour
         {
             Time.timeScale = 0.5f;
             player.playerCamera.sens /= 0.5f;
+            Application.targetFrameRate = 120;
         }
 
         else
         {
             Time.timeScale = 1;
             player.playerCamera.sens *= 0.5f;
+            Application.targetFrameRate = 60;
         }
     }
 
@@ -102,8 +104,8 @@ public class SwapSkill : MonoBehaviour
         Transform enemyT = hit.transform;
         
         Vector3 enemyPos = enemyT.position;
-        Quaternion enemyRot = enemyT.rotation;
-        Vector3 newVel = Vector3.Project(playerRB.velocity, enemyT.up);
+        Quaternion enemyRot = Quaternion.Euler(0, enemyT.rotation.eulerAngles.y, 0);
+        //Vector3 newVel = Vector3.Project(playerRB.velocity, enemyT.up);
 
         enemyT.position = transform.position;
         enemyT.rotation = transform.rotation;
@@ -111,7 +113,7 @@ public class SwapSkill : MonoBehaviour
         transform.position = enemyPos;
         transform.rotation = enemyRot;
 
-        playerRB.velocity = newVel;
+        //playerRB.velocity = newVel;
 
         currentReserve -= 2;
 

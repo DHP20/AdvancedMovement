@@ -97,10 +97,13 @@ public class PlayerMovement : MonoBehaviour
             grounded = Physics.SphereCast(transform.position, cc.radius * 0.7f, Vector3.down, out hit, cc.height / 2.4f);
 
             if (!grounded)
-                if (Physics.SphereCast(transform.position, cc.radius * 0.7f, transform.right, out wallRunHit, cc.radius) || Physics.SphereCast(transform.position, cc.radius * 0.7f, -transform.right, out wallRunHit, cc.radius))
+                if (Physics.SphereCast(transform.position, cc.radius * 0.8f, transform.right, out wallRunHit, cc.radius * 1.3f) || Physics.SphereCast(transform.position, cc.radius * 0.8f, -transform.right, out wallRunHit, cc.radius * 1.3f))
                 {
-                    EnteredWallRide();
-                    return;
+                    if (wallRunHit.transform.gameObject.layer == 8)
+                    {
+                        EnteredWallRide();
+                        return;
+                    }
                 }
         }
 
@@ -116,6 +119,9 @@ public class PlayerMovement : MonoBehaviour
     protected virtual void MovementGround()
     {
         float targetDrag, currentMaxSpeed;
+
+        if (wasOnAir)
+            doubleJump = true;
 
         if (crouched)
         {
@@ -145,9 +151,6 @@ public class PlayerMovement : MonoBehaviour
                 rb.drag = originalDrag;
             }
         }
-
-        if (wasOnAir)
-            doubleJump = true;
 
         rb.useGravity = false;
 
@@ -362,12 +365,14 @@ public class PlayerMovement : MonoBehaviour
         Debug.DrawRay(wallRunHit.point, Vector3.Cross(wallRideNormal, transform.up), Color.white, Time.fixedDeltaTime);
         Debug.DrawRay(transform.position, -wallRideNormal, Color.red, Time.fixedDeltaTime);
 
-        rb.AddForce(wallVector * wallForce * inputs.y + -wallRideNormal * 120);
+        rb.AddForce(wallVector * wallForce * inputs.y + -wallRideNormal * 50);
 
         Debug.Log(!Physics.SphereCast(transform.position, cc.radius * 0.8f, -wallRideNormal, out wallRunHit, cc.radius));
 
-        if (!Physics.SphereCast(transform.position, cc.radius, -wallRideNormal, out wallRunHit, cc.radius * 1.25f) && !Physics.Raycast(transform.position, -wallRideNormal, out wallRunHit, cc.radius * 1.25f))
+        if ((!Physics.SphereCast(transform.position, cc.radius * 0.5f, -wallRideNormal, out wallRunHit, cc.radius * 1.5f) && !Physics.Raycast(transform.position, -wallRideNormal, out wallRunHit, cc.radius * 1.5f)) || wallRunHit.transform.gameObject.layer != 8)
+        {
             ExitWallRide();
+        }
     }
 
     void ExitWallRide()
@@ -382,6 +387,13 @@ public class PlayerMovement : MonoBehaviour
             StopCoroutine(wrCD);
 
         StartCoroutine(wrCD = WallRunCD());
+    }
+
+    public void ResetState()
+    {
+        rb.velocity = Vector3.zero;
+        CrouchToggle(false);
+        ExitWallRide();
     }
 
     protected IEnumerator SprintCD()

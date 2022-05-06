@@ -22,6 +22,10 @@ public class PlayerCamera : MonoBehaviour
             Destroy(gameObject);
 
         p_transform = transform.parent;
+        sens = PlayerPrefs.GetFloat("Sens");
+
+        if (sens == 0)
+            sens = 5;
     }
 
     private void Start()
@@ -41,8 +45,8 @@ public class PlayerCamera : MonoBehaviour
     {
         Vector2 inputs = InputManager.inputManager.cameraInput;
 
-        float mouseX = inputs.x * sens * Time.deltaTime;
-        float mouseY = inputs.y * sens * Time.deltaTime;
+        float mouseX = inputs.x * sens / 2 * Time.deltaTime;
+        float mouseY = inputs.y * sens / 2 * Time.deltaTime;
 
         xRotation -= mouseY;
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);

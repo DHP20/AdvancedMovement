@@ -92,6 +92,14 @@
                     "expectedControlType": "Button",
                     "processors": "",
                     "interactions": "Press"
+                },
+                {
+                    "name": "Controls",
+                    "type": "Button",
+                    "id": "6e7b5d72-3c4f-48a3-83d0-77cf226b5fd2",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "Press(behavior=2)"
                 }
             ],
             "bindings": [
@@ -444,6 +452,17 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "Quit",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "de89e723-d3e7-4e5b-b941-ea1f3142f932",
+                    "path": "<Keyboard>/tab",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "Controls",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
