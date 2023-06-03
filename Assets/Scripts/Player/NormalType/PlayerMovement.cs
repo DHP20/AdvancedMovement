@@ -9,13 +9,13 @@ public class PlayerMovement : MonoBehaviour
     protected RaycastHit hit, wallRunHit;
 
     [SerializeField]
-    protected float speed, groundMaxSpeed, airStrafeForce, airDrag = 0.3f, crouchedSpeed, crouchedDrag = 0.6f, crouchedMaxSpeed = 1, wallDrag = 0.8f, wallForce, wallRunCD;
+    protected float speed, groundMaxSpeed, airStrafeForce, airDrag = 0.3f, crouchedSpeed, crouchedDrag = 0.6f, crouchedMaxSpeed = 1, wallDrag = 0.8f, wallForce, wallRunCD, wallrunExitAngle = 40;
     [SerializeField]
     protected float slideBoost, airMaxSpeed, counterDrag, jumpForce, sprintSpeed, lerpMod, maxExtraFOV = 30, maxSway = 15, swayMod = 3;//stamina,
     protected float originalDrag, jumpTime, originalHeight, normalFOV, wallrunYRotExit;//currentStamina,
     public float currentSway = 0;
 
-    protected bool grounded, sprinting, sprintCD, crouched, wasOnAir, slideOnCD, swayDir, resetSway, doubleJump, wasOnWall, wallRunOnCD;
+    protected bool grounded, wallFloorCheck, sprinting, sprintCD, crouched, wasOnAir, slideOnCD, swayDir, resetSway, doubleJump, wasOnWall, wallRunOnCD;
     public bool wallRunning;
 
     Vector2 inputs;
@@ -44,7 +44,7 @@ public class PlayerMovement : MonoBehaviour
         player = Player.player;
         originalDrag = rb.drag;
 
-        Application.targetFrameRate = 90;
+        Application.targetFrameRate = 244;
 
         InputManager.inputManager.p_actions.Move.performed += ctx => ReadMovementInput();
         InputManager.inputManager.p_actions.Move.canceled += ctx => ReadMovementInput();
@@ -75,8 +75,6 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
-        
-
         if(grounded)
             MovementGround();
 
@@ -95,9 +93,14 @@ public class PlayerMovement : MonoBehaviour
         if (!crouched)
         {
             grounded = Physics.SphereCast(transform.position, cc.radius * 0.7f, Vector3.down, out hit, cc.height / 2.4f);
+            wallFloorCheck = Physics.SphereCast(transform.position, cc.radius * 0.7f, Vector3.down, out hit, cc.height);
 
-            if (!grounded)
-                if (Physics.SphereCast(transform.position, cc.radius * 0.8f, transform.right, out wallRunHit, cc.radius * 1.3f) || Physics.SphereCast(transform.position, cc.radius * 0.8f, -transform.right, out wallRunHit, cc.radius * 1.3f))
+            if (!wallFloorCheck)
+            {
+                Vector3 wallDetDir = new Vector3(rb.velocity.x, 0, rb.velocity.z).normalized;
+
+                //if (Physics.SphereCast(transform.position, cc.radius * 0.8f, transform.right, out wallRunHit, cc.radius * 1.3f) || Physics.SphereCast(transform.position, cc.radius * 0.8f, -transform.right, out wallRunHit, cc.radius * 1.3f))
+                if (Physics.SphereCast(transform.position, cc.radius * 0.8f, wallDetDir, out wallRunHit, cc.radius * 1.3f))
                 {
                     if (wallRunHit.transform.gameObject.layer == 8)
                     {
@@ -105,6 +108,7 @@ public class PlayerMovement : MonoBehaviour
                         return;
                     }
                 }
+            }
         }
 
         else
@@ -144,12 +148,7 @@ public class PlayerMovement : MonoBehaviour
 
         else if (wasOnAir)
         {
-            float forwardSpeed = new Vector3(0, 0, rb.velocity.z).magnitude;
-
-            if (forwardSpeed > groundMaxSpeed / 4f)
-            {
-                rb.drag = originalDrag;
-            }
+            TouchedGround();
         }
 
         rb.useGravity = false;
@@ -172,6 +171,25 @@ public class PlayerMovement : MonoBehaviour
 
         else
             rb.drag = Mathf.Lerp(rb.drag, targetDrag, Time.deltaTime * lerpMod);
+    }
+
+    protected void TouchedGround()
+    {
+        float forwardSpeed = new Vector3(0, 0, rb.velocity.z).magnitude;
+
+        if (forwardSpeed > groundMaxSpeed / 4f)
+        {
+            rb.drag = originalDrag;
+        }
+
+        if (wallRunning)
+            ExitWallRide();
+
+        if (wrCD != null)
+        {
+            StopCoroutine(wrCD);
+            wallRunOnCD = false;
+        }
     }
 
     protected void HandleFOV()
@@ -252,8 +270,9 @@ public class PlayerMovement : MonoBehaviour
     {
         if (wallRunning)
         {
-            rb.AddForce(jumpForce * wallRunHit.normal + Vector3.up * jumpForce * 0.75f, ForceMode.Impulse);
             ExitWallRide();
+            rb.velocity = rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
+            rb.AddForce(jumpForce * wallRunHit.normal + Vector3.up * jumpForce * 0.75f, ForceMode.Impulse);
             return;
         }
 
@@ -267,7 +286,6 @@ public class PlayerMovement : MonoBehaviour
 
         else if (!grounded)
             return;
-        
 
         rb.drag = 0;
 
@@ -335,7 +353,7 @@ public class PlayerMovement : MonoBehaviour
 
     void EnteredWallRide()
     {
-        if ((lastWall == wallRunHit.transform.gameObject && wallRunOnCD) )//|| wallRunHit.transform.gameObject.layer != 8)
+        if ((lastWall == wallRunHit.transform.gameObject && wallRunOnCD))//|| wallRunHit.transform.gameObject.layer != 8)
             return;
 
         Debug.Log(lastWall + "  " + wallRunOnCD);
@@ -369,7 +387,13 @@ public class PlayerMovement : MonoBehaviour
 
         Debug.Log(!Physics.SphereCast(transform.position, cc.radius * 0.8f, -wallRideNormal, out wallRunHit, cc.radius));
 
-        if ((!Physics.SphereCast(transform.position, cc.radius * 0.5f, -wallRideNormal, out wallRunHit, cc.radius * 1.5f) && !Physics.Raycast(transform.position, -wallRideNormal, out wallRunHit, cc.radius * 1.5f)) || wallRunHit.transform.gameObject.layer != 8)
+        //if ((!Physics.SphereCast(transform.position, cc.radius * 0.5f, -wallRideNormal, out wallRunHit, cc.radius * 1.5f) && !Physics.Raycast(transform.position, -wallRideNormal, out wallRunHit, cc.radius * 1.5f)) || wallRunHit.transform.gameObject.layer != 8)
+        
+        //if(Physics.SphereCast(transform.position, cc.radius * 0.5f, -moveDir, out wallRunHit, cc.radius * 1.5f))
+        float angle = Vector3.Angle(wallRideNormal, moveDir);
+        Debug.Log(angle);
+
+        if (angle < wallrunExitAngle && angle != 0)
         {
             ExitWallRide();
         }
