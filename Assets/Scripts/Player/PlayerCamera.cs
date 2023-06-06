@@ -45,8 +45,8 @@ public class PlayerCamera : MonoBehaviour
     {
         Vector2 inputs = InputManager.inputManager.cameraInput;
 
-        float mouseX = inputs.x * sens / 2 * Time.deltaTime;
-        float mouseY = inputs.y * sens / 2 * Time.deltaTime;
+        float mouseX = inputs.x * sens * Time.deltaTime;
+        float mouseY = inputs.y * sens * Time.deltaTime;
 
         xRotation -= mouseY;
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
@@ -69,9 +69,11 @@ public class PlayerCamera : MonoBehaviour
 
         #endregion
 
-        p_transform.Rotate(Vector3.up * mouseX);
 
-        transform.localRotation = Quaternion.Euler(xRotation, 0, playerMov.currentSway);
+        //p_transform.rotation *= Quaternion.Euler(Vector3.up * mouseX);
+        p_transform.Rotate(Vector3.up * mouseX, Space.Self);
 
+        //transform.localRotation = Quaternion.Euler(xRotation, 0, playerMov.currentSway);
+        transform.localRotation = Quaternion.Euler(xRotation, 0, 0);
     }
 }

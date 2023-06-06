@@ -1,1 +1,0 @@
-Ultimo ep: Solo falta retocar el calculo de la direccion en funcion del Cross product de la normal.
