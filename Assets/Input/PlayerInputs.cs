@@ -113,6 +113,14 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
                     ""expectedControlType"": ""Button"",
                     ""processors"": """",
                     ""interactions"": ""Press(behavior=2)""
+                },
+                {
+                    ""name"": ""Grapple"",
+                    ""type"": ""Button"",
+                    ""id"": ""ff6bcbf9-77a5-4a8f-9b29-b6b9e32f6fa0"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": ""Press(behavior=2)""
                 }
             ],
             ""bindings"": [
@@ -476,6 +484,17 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
                     ""action"": ""Controls"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""2630223b-6c04-4c4e-93e6-1ce958a29e28"",
+                    ""path"": ""<Keyboard>/q"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""Grapple"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -1065,6 +1084,7 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
         m_Player_Reload = m_Player.FindAction("Reload", throwIfNotFound: true);
         m_Player_Quit = m_Player.FindAction("Quit", throwIfNotFound: true);
         m_Player_Controls = m_Player.FindAction("Controls", throwIfNotFound: true);
+        m_Player_Grapple = m_Player.FindAction("Grapple", throwIfNotFound: true);
         // UI
         m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
         m_UI_Navigate = m_UI.FindAction("Navigate", throwIfNotFound: true);
@@ -1138,6 +1158,7 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
     private readonly InputAction m_Player_Reload;
     private readonly InputAction m_Player_Quit;
     private readonly InputAction m_Player_Controls;
+    private readonly InputAction m_Player_Grapple;
     public struct PlayerActions
     {
         private @PlayerInputs m_Wrapper;
@@ -1154,6 +1175,7 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
         public InputAction @Reload => m_Wrapper.m_Player_Reload;
         public InputAction @Quit => m_Wrapper.m_Player_Quit;
         public InputAction @Controls => m_Wrapper.m_Player_Controls;
+        public InputAction @Grapple => m_Wrapper.m_Player_Grapple;
         public InputActionMap Get() { return m_Wrapper.m_Player; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -1199,6 +1221,9 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
                 @Controls.started -= m_Wrapper.m_PlayerActionsCallbackInterface.OnControls;
                 @Controls.performed -= m_Wrapper.m_PlayerActionsCallbackInterface.OnControls;
                 @Controls.canceled -= m_Wrapper.m_PlayerActionsCallbackInterface.OnControls;
+                @Grapple.started -= m_Wrapper.m_PlayerActionsCallbackInterface.OnGrapple;
+                @Grapple.performed -= m_Wrapper.m_PlayerActionsCallbackInterface.OnGrapple;
+                @Grapple.canceled -= m_Wrapper.m_PlayerActionsCallbackInterface.OnGrapple;
             }
             m_Wrapper.m_PlayerActionsCallbackInterface = instance;
             if (instance != null)
@@ -1239,6 +1264,9 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
                 @Controls.started += instance.OnControls;
                 @Controls.performed += instance.OnControls;
                 @Controls.canceled += instance.OnControls;
+                @Grapple.started += instance.OnGrapple;
+                @Grapple.performed += instance.OnGrapple;
+                @Grapple.canceled += instance.OnGrapple;
             }
         }
     }
@@ -1407,6 +1435,7 @@ public class @PlayerInputs : IInputActionCollection, IDisposable
         void OnReload(InputAction.CallbackContext context);
         void OnQuit(InputAction.CallbackContext context);
         void OnControls(InputAction.CallbackContext context);
+        void OnGrapple(InputAction.CallbackContext context);
     }
     public interface IUIActions
     {

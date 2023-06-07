@@ -33,7 +33,7 @@ public class PlayerCamera : MonoBehaviour
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
 
-        playerMov = Player.player.playerMovement;
+        playerMov = Player.instance.playerMovement;
     }
 
     private void Update()
@@ -43,7 +43,7 @@ public class PlayerCamera : MonoBehaviour
 
     void Look()
     {
-        Vector2 inputs = InputManager.inputManager.cameraInput;
+        Vector2 inputs = InputManager.instance.cameraInput;
 
         float mouseX = inputs.x * sens * Time.deltaTime;
         float mouseY = inputs.y * sens * Time.deltaTime;
@@ -74,6 +74,6 @@ public class PlayerCamera : MonoBehaviour
         p_transform.Rotate(Vector3.up * mouseX, Space.Self);
 
         //transform.localRotation = Quaternion.Euler(xRotation, 0, playerMov.currentSway);
-        transform.localRotation = Quaternion.Euler(xRotation, 0, 0);
+        transform.localRotation = Quaternion.Euler(xRotation, 0, transform.rotation.eulerAngles.z);
     }
 }

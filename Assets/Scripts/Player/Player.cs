@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
-    public static Player player;
+    public static Player instance;
 
     [HideInInspector]
     public PlayerMovement playerMovement;
@@ -23,8 +23,8 @@ public class Player : MonoBehaviour
 
     private void Awake()
     {
-        if (!player)
-            player = this;
+        if (!instance)
+            instance = this;
 
         playerMovement = GetComponent<PlayerMovement>();
         playerCamera = GetComponentInChildren<PlayerCamera>();
@@ -33,10 +33,10 @@ public class Player : MonoBehaviour
     private void Start()
     {
         enemies = FindObjectsOfType<BaseEnemy>();
-        InputManager.inputManager.p_actions.Quit.started += ctx => Pause();
+        InputManager.instance.p_actions.Quit.started += ctx => Pause();
 
-        InputManager.inputManager.p_actions.Controls.started += ctx => ControlsToggle(true);
-        InputManager.inputManager.p_actions.Controls.canceled += ctx => ControlsToggle(false);
+        InputManager.instance.p_actions.Controls.started += ctx => ControlsToggle(true);
+        InputManager.instance.p_actions.Controls.canceled += ctx => ControlsToggle(false);
 
 
         ChangeSpawn(transform.position);

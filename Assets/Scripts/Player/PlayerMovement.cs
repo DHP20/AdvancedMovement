@@ -6,10 +6,12 @@ public class PlayerMovement : MonoBehaviour
 {
     [HideInInspector]
     public Rigidbody rb;
-    CapsuleCollider cc;
+    [HideInInspector]
+    public CapsuleCollider cc;
     RaycastHit hit, wallRunHit;
     RaycastHit hit2;
     RaycastHit climbHit;
+    RaycastHit grappleHit;
 
     [SerializeField] [Header("Grounded parameters")]
     float speed = 4;
@@ -24,21 +26,30 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField][Header("Wallrun parameters")]
     float wallrunDetRange = 1;
     [SerializeField]
-    float wallDrag = 0.8f, wallForce, wallRunCD, wallrunExitAngle = 40, wallrunExitTime = 3, maxTilt = 15;
+    float wallDrag = 0.8f, wallForce, wallRunCD, wallrunExitAngle = 40, wallrunExitTime = 3, maxCmTilt = 15;
 
     [SerializeField][Header("Jump parameters")]
     float jumpForce;
     [SerializeField]
-    float doubleJumpForce = 3, climbDetRange = 1f, climbSpeedMod = 2, lerpMod, maxExtraFOV = 30, maxSway = 15, swayMod = 3;
+    float doubleJumpForce = 3, climbDetRange = 1f, climbSpeedMod = 2,  maxExtraFOV = 30, maxSway = 15, swayMod = 3;
 
-    float originalDrag, originalHeight, normalFOV, wallrunTimer, currentTilt;
+    [SerializeField]
+    [Header("Grapple Hook Parameters")]
+    float hookSpeed = 20;
+    [SerializeField]
+    float hookReelSpeed = 5, hookSpring = 10, hookDamper = 18, hookMassScale = 18, hookCD = 5;
+
+    float originalDrag, originalHeight, normalFOV, wallrunTimer, currentCmTilt;
+    [HideInInspector]
     public float currentSway = 0;
 
-    bool grounded, forceGroundOnCD, wallFloorCheck, sprinting, sprintCD, crouched, sliding, wasOnAir, slideOnCD, swayDir, resetSway, jumpOnCD, doubleJump, wasOnWall, wallRunOnCD;
+    bool grounded, grappling, grappleThrown, grappleOnCD, wallFloorCheck, sprinting, sprintCD, crouched, sliding, wasOnAir, slideOnCD, swayDir, resetSway, jumpOnCD, doubleJump, wasOnWall, wallRunOnCD;
     [HideInInspector]
     public bool wallRunning, climbing;
 
     int wallTiltDir = 1;
+
+    SpringJoint grappleJoint;
 
     Vector2 inputs;
     Vector3 moveDir;
@@ -52,28 +63,36 @@ public class PlayerMovement : MonoBehaviour
     Transform cmTransform;
 
     GameObject lastWall;
+    GameObject grapple;
+
+    InputManager inputM;
+    Pools pools;
 
     IEnumerator wrCD;
-    IEnumerator forceGroundCR;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
         cc = GetComponent<CapsuleCollider>();
+        pools = Pools.instance;
     }
 
     private void Start()
     {
-        player = Player.player;
+        player = Player.instance;
         originalDrag = rb.drag;
 
-        InputManager.inputManager.p_actions.Jump.started += ctx => { Jump(); StartCoroutine(JumpCD()); };
+        inputM = InputManager.instance;
 
-        InputManager.inputManager.p_actions.Sprint.started += ctx => sprinting = true;
-        InputManager.inputManager.p_actions.Sprint.canceled += ctx => sprinting = false;
+        inputM.p_actions.Jump.started += ctx => { Jump(); StartCoroutine(JumpCD()); };
 
-        InputManager.inputManager.p_actions.Crouch.started += ctx => CrouchToggle(true);
-        InputManager.inputManager.p_actions.Crouch.canceled += ctx => CrouchToggle(false);
+        inputM.p_actions.Sprint.started += ctx => sprinting = true;
+        inputM.p_actions.Sprint.canceled += ctx => sprinting = false;
+
+        inputM.p_actions.Crouch.started += ctx => CrouchToggle(true);
+        inputM.p_actions.Crouch.canceled += ctx => CrouchToggle(false);
+
+        inputM.p_actions.Grapple.started += ctx => GrappleHook();
 
         originalHeight = cc.height;
 
@@ -82,7 +101,6 @@ public class PlayerMovement : MonoBehaviour
 
         normalFOV = cm.fieldOfView;
         wallrunTimer = wallrunExitTime;
-
     }
 
     private void Update()
@@ -95,10 +113,21 @@ public class PlayerMovement : MonoBehaviour
         moveDir = transform.forward * inputs.y + transform.right * inputs.x;
         horizontalVel = new Vector3(rb.velocity.x, 0, rb.velocity.z);
 
+        HandleFOV();
+        //CameraSway();
+
         if (climbing)
             return;
 
+        if (grappling)
+        {
+            MovementAir();
+            Grappling();
+            return;
+        }
+
         ClimbDetection();
+        HandleCmTilt();
 
         if (wallRunning)
         {
@@ -110,15 +139,7 @@ public class PlayerMovement : MonoBehaviour
             MovementGround();
 
         else
-        {
-            rb.drag = airDrag;
-            resetSway = true;
             MovementAir();
-        }
-
-        HandleFOV();
-        HandleTilt();
-        //CameraSway();
 
         wasOnAir = !grounded;
 
@@ -129,10 +150,11 @@ public class PlayerMovement : MonoBehaviour
 
             if (!wallFloorCheck)
             {
-                Vector3 wallDetDir = horizontalVel.normalized;
+                Vector3 wallDetDirSpeed = horizontalVel.normalized;
+                Vector3 wallDetDirInput = moveDir.normalized;
 
                 //if (Physics.SphereCast(transform.position, cc.radius * 0.8f, transform.right, out wallRunHit, cc.radius * 1.3f) || Physics.SphereCast(transform.position, cc.radius * 0.8f, -transform.right, out wallRunHit, cc.radius * 1.3f))
-                if (Physics.SphereCast(transform.position, cc.radius * 0.8f, wallDetDir, out wallRunHit, wallrunDetRange) && !jumpOnCD)
+                if ((Physics.SphereCast(transform.position, cc.radius * 0.8f, wallDetDirSpeed, out wallRunHit, wallrunDetRange) || Physics.SphereCast(transform.position, cc.radius * 0.8f, wallDetDirInput, out wallRunHit, wallrunDetRange)) && !jumpOnCD)
                 {
                     EnteredWallRide();
                     return;
@@ -146,7 +168,7 @@ public class PlayerMovement : MonoBehaviour
 
     void ReadMovementInput()
     {
-        inputs = InputManager.inputManager.p_actions.Move.ReadValue<Vector2>();
+        inputs = InputManager.instance.p_actions.Move.ReadValue<Vector2>();
     }
 
     void MovementGround()
@@ -181,7 +203,7 @@ public class PlayerMovement : MonoBehaviour
 
         if (!jumpOnCD)
         {
-            transform.position = new Vector3(transform.position.x, hit.point.y + Vector3.Distance(hit.point, transform.position), transform.position.z);
+            transform.position = new Vector3(transform.position.x, hit2.point.y + Vector3.Distance(hit2.point, transform.position), transform.position.z);
             rb.velocity = horizontalVel;
         }
             
@@ -255,11 +277,6 @@ public class PlayerMovement : MonoBehaviour
     void TouchedGround()
     {
         float forwardSpeed = new Vector3(0, 0, horizontalVel.z).magnitude;
-
-        if (forceGroundCR != null)
-        {
-            StopCoroutine(forceGroundCR);
-        }
             
 
         if (forwardSpeed > groundMaxSpeed / 4f)
@@ -331,6 +348,9 @@ public class PlayerMovement : MonoBehaviour
 
     void MovementAir()
     {
+        rb.drag = airDrag;
+        resetSway = true;
+
         rb.useGravity = true;
 
         Vector3 projVel = Vector3.Project(horizontalVel, moveDir);
@@ -339,9 +359,6 @@ public class PlayerMovement : MonoBehaviour
 
         if (goingAway)
         {
-            Debug.Log("strafing");
-
-            
             targetForce = Vector3.ClampMagnitude(targetForce, airMaxSpeed + projVel.magnitude);
 
             rb.AddForce(targetForce, ForceMode.VelocityChange);
@@ -386,8 +403,6 @@ public class PlayerMovement : MonoBehaviour
 
         rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
         rb.AddForce(jumpForce * Vector3.up, ForceMode.Impulse);
-
-        StartCoroutine(forceGroundCR = ForceGround());
     }
 
     float HandleSprint()
@@ -413,6 +428,9 @@ public class PlayerMovement : MonoBehaviour
             ExitWallRide();
             return;
         }
+
+        if (grappling)
+            ExitGrapple();
 
         RaycastHit hitTemp;
 
@@ -481,13 +499,13 @@ public class PlayerMovement : MonoBehaviour
         if (Vector3.Angle(Vector3.Project(transform.forward, Vector3.Cross(wallRideNormal, transform.up)), Vector3.Cross(wallRideNormal, transform.up)) < 90)
         {
             wallVector = Vector3.Cross(wallRideNormal, transform.up);
-            wallTiltDir = 1;
+            wallTiltDir = -1;
         }
 
         else
         {
             wallVector = -Vector3.Cross(wallRideNormal, transform.up);
-            wallTiltDir = -1;
+            wallTiltDir = 1;
         }
 
         float angle = Vector3.Angle(wallRideNormal, moveDir);
@@ -519,23 +537,80 @@ public class PlayerMovement : MonoBehaviour
         ExitWallRide();
     }
 
-    void HandleTilt()
+    void HandleCmTilt()
     {
-        if (wallRunning && currentTilt < maxTilt)
-            currentTilt += Time.fixedDeltaTime * 30;
+        if (wallRunning && currentCmTilt < maxCmTilt)
+            currentCmTilt += Time.fixedDeltaTime * 60;
 
-        else if (currentTilt > 0)
-            currentTilt -= Time.fixedDeltaTime * 30;
+        else if (wallRunning && currentCmTilt > maxCmTilt)
+            currentCmTilt = maxCmTilt;
 
-        if (currentTilt < 0)
-            currentTilt = 0;
+        else if (!wallRunning && currentCmTilt > 0)
+            currentCmTilt -= Time.fixedDeltaTime * 60;
 
-        else if (currentTilt > maxTilt)
-            currentTilt = maxTilt;
+        else if (!wallRunning && currentCmTilt < 0)
+            currentCmTilt = 0;
 
-        currentTilt *= wallTiltDir;
+        cmTransform.localRotation = Quaternion.Euler(new Vector3 (cmTransform.eulerAngles.x, cmTransform.eulerAngles.y, currentCmTilt) *  wallTiltDir);
+    }
 
-        cmTransform.rotation = Quaternion.Euler(cmTransform.eulerAngles.x, cmTransform.eulerAngles.y, currentTilt);
+    void GrappleHook()
+    {
+        if (grappleOnCD)
+            return;
+
+        Physics.Raycast(cmTransform.position, cmTransform.forward, out grappleHit, 200);
+
+        if (!grappling && !grappleThrown)
+        {
+            grappleThrown = true;
+            grapple = pools.GrabFromPool("Grapple", transform.position, Quaternion.identity);
+
+            if(grappleHit.point != Vector3.zero)
+                grapple.GetComponent<Rigidbody>().velocity = (grappleHit.point - transform.position).normalized * hookSpeed;
+
+            else
+                grapple.GetComponent<Rigidbody>().velocity = (cmTransform.position + cmTransform.forward * 200 - transform.position).normalized * hookSpeed;
+        }
+
+        else
+            ExitGrapple();
+    }
+
+    public void GrappleConnect()
+    {
+        grappleJoint = gameObject.AddComponent<SpringJoint>();
+
+        grappleJoint.autoConfigureConnectedAnchor = false;
+
+        grappling = true;
+        grappleJoint.connectedAnchor = grappleHit.point;
+        grappleJoint.maxDistance = Vector3.Distance(grappleHit.point, transform.position);
+        grappleJoint.minDistance = 1;
+        grappleJoint.spring = hookSpring;
+        grappleJoint.damper = hookDamper;
+        grappleJoint.massScale = hookMassScale;
+
+    }
+
+    void Grappling()
+    {
+        float distance = Vector3.Distance(grappleHit.point, transform.position);
+
+        if (distance < 2 || Vector3.Angle(transform.forward, (grappleHit.point - transform.position).normalized) > 90 || !grapple.activeInHierarchy)
+            ExitGrapple();
+
+        if(grappleJoint.maxDistance > 2)
+            grappleJoint.maxDistance -= hookReelSpeed * Time.fixedDeltaTime;
+    }
+
+    void ExitGrapple()
+    {
+        Destroy(grappleJoint);
+        grappleThrown = false;
+        grappling = false;
+        grapple.SetActive(false);
+        StartCoroutine(GrappleCD());
     }
 
     IEnumerator JumpCD()
@@ -547,13 +622,13 @@ public class PlayerMovement : MonoBehaviour
         jumpOnCD = false;
     }
 
-    IEnumerator ForceGround()
+    IEnumerator GrappleCD()
     {
-        forceGroundOnCD = true;
+        grappleOnCD = true;
 
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSeconds(hookCD);
 
-        forceGroundOnCD = false;
+        grappleOnCD = false;
     }
 
     IEnumerator SprintCD()
@@ -567,8 +642,6 @@ public class PlayerMovement : MonoBehaviour
 
     IEnumerator SlideBoostCD()
     {
-        Debug.Log("slide");
-
         slideOnCD = true;
 
         yield return new WaitForSeconds(2);

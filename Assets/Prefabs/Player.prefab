@@ -1335,7 +1335,7 @@ Camera:
     height: 1
   near clip plane: 0.01
   far clip plane: 200
-  field of view: 100
+  field of view: 110
   orthographic: 0
   orthographic size: 5
   m_Depth: 0
@@ -1473,30 +1473,33 @@ MonoBehaviour:
   rb: {fileID: 0}
   speed: 4
   groundMaxSpeed: 6
-  airStrafeForce: 0.16
-  airDrag: 0.2
+  sprintSpeed: 6
+  counterDrag: 10
   crouchedSpeed: 3
   crouchedDrag: 7
+  slideBoost: 3
   slideMinSpeed: 2
-  slideDrag: 0.7
+  slideDrag: 0.6
+  airStrafeForce: 0.16
+  airDrag: 0.05
+  airMaxSpeed: 3
   wallrunDetRange: 0.5
   wallDrag: 1.8
-  wallForce: 15
-  wallRunCD: 2
-  wallrunExitAngle: 35
+  wallForce: 20
+  wallRunCD: 1.8
+  wallrunExitAngle: 40
   wallrunExitTime: 2.5
-  slideBoost: 3
-  airMaxSpeed: 1
-  counterDrag: 10
-  jumpForce: 5.5
-  doubleJumpForce: 3
-  sprintSpeed: 6
-  lerpMod: 5
+  maxCmTilt: 15
+  jumpForce: 6.5
+  doubleJumpForce: 6
+  climbDetRange: 0.9
+  climbSpeedMod: 3
   maxExtraFOV: 15
   maxSway: 1
   swayMod: 5
   currentSway: 0
   wallRunning: 0
+  climbing: 0
 --- !u!1001 &7607750449623377298
 PrefabInstance:
   m_ObjectHideFlags: 0

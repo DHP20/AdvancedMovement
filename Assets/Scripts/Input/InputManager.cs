@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class InputManager : MonoBehaviour
 {
-    public static InputManager inputManager;
+    public static InputManager instance;
     public PlayerInputs p_input;
     public PlayerInputs.PlayerActions p_actions;
 
@@ -15,8 +15,8 @@ public class InputManager : MonoBehaviour
 
     private void Awake()
     {
-        if (!inputManager)
-            inputManager = this;
+        if (!instance)
+            instance = this;
 
         p_input = new PlayerInputs();
         p_actions = p_input.Player;
