@@ -4,21 +4,26 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
+    [SerializeField][Header("Player Camera")]
+    Camera cm;
+
     [HideInInspector]
     public Rigidbody rb;
+
     [HideInInspector]
     public CapsuleCollider cc;
+
     RaycastHit hit, wallRunHit;
     RaycastHit hit2;
     RaycastHit climbHit;
     RaycastHit grappleHit;
 
-    [SerializeField] [Header("Grounded parameters")]
+    [SerializeField][Header("Grounded parameters")]
     float speed = 4;
     [SerializeField]
     float groundMaxSpeed, sprintSpeed, counterDrag, crouchedSpeed, crouchedDrag = 8f, slideBoost = 3, slideMinSpeed = 1, slideDrag = 0.7f;
 
-    [SerializeField] [Header("Air parameters")]
+    [SerializeField][Header("Air parameters")]
     float airStrafeForce = 0.16f;
     [SerializeField]
     float airDrag = 0.2f, airMaxSpeed;
@@ -31,7 +36,20 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField][Header("Jump parameters")]
     float jumpForce;
     [SerializeField]
-    float doubleJumpForce = 3, climbDetRange = 1f, climbSpeedMod = 2,  maxExtraFOV = 30, maxSway = 15, swayMod = 3;
+    float doubleJumpForce = 3;
+
+    [SerializeField][Header("FOV Effect")]
+    float maxExtraFOV = 30;
+
+    [SerializeField][Header("Head bob parameters")]
+    float maxSway = 15;
+    [SerializeField]
+    float swayMod = 3;
+
+    [SerializeField][Header("Climb parameters")]
+    float climbDetRange = 1f;
+    [SerializeField]
+    float climbSpeedMod = 2;
 
     [SerializeField]
     [Header("Grapple Hook Parameters")]
@@ -59,7 +77,6 @@ public class PlayerMovement : MonoBehaviour
 
     Player player;
 
-    Camera cm;
     Transform cmTransform;
 
     GameObject lastWall;
@@ -79,7 +96,6 @@ public class PlayerMovement : MonoBehaviour
 
     private void Start()
     {
-        player = Player.instance;
         originalDrag = rb.drag;
 
         inputM = InputManager.instance;
@@ -96,7 +112,6 @@ public class PlayerMovement : MonoBehaviour
 
         originalHeight = cc.height;
 
-        cm = player.playerCamera.GetComponent<Camera>();
         cmTransform = cm.transform;
 
         normalFOV = cm.fieldOfView;
