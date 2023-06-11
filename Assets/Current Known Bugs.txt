@@ -1,0 +1,3 @@
+The grapple hook seems to shot in a random direction and not connect or  incorrectly apply forces to the player when used.
+
+To reproduce the bug  try to grapple anywhere.

@@ -1,2 +1,0 @@
-Grapple sometimes goes in a random direction, no way to replicate; bug is random.
-When grapple ends sometimes you get teleported to a random distance in a random direction; no way to replicate, bug is random.
